@@ -32,7 +32,14 @@ export async function handleRegister(request, env) {
 
     // Compute full FQDN subdomain string for callbacks
     const reqHost = request.headers.get('Host') || new URL(request.url).hostname;
-    const oastDomain = env.OAST_DOMAIN || env.BASE_DOMAIN || reqHost;
+    let oastDomain = env.OAST_DOMAIN || env.BASE_DOMAIN || '';
+    if (!oastDomain) {
+      if (reqHost.startsWith('toast.')) {
+        oastDomain = reqHost.replace(/^toast\./, 't.');
+      } else {
+        oastDomain = reqHost;
+      }
+    }
     const cleanOastDomain = oastDomain.replace(/^https?:\/\//, '').replace(/^\*\./, '');
     const formattedSubdomain = `${payloadId}.${cleanOastDomain}`;
 
@@ -86,7 +93,14 @@ export async function handlePoll(request, env) {
     });
 
     const reqHost = request.headers.get('Host') || new URL(request.url).hostname;
-    const oastDomain = env.OAST_DOMAIN || env.BASE_DOMAIN || reqHost;
+    let oastDomain = env.OAST_DOMAIN || env.BASE_DOMAIN || '';
+    if (!oastDomain) {
+      if (reqHost.startsWith('toast.')) {
+        oastDomain = reqHost.replace(/^toast\./, 't.');
+      } else {
+        oastDomain = reqHost;
+      }
+    }
     const cleanOastDomain = oastDomain.replace(/^https?:\/\//, '').replace(/^\*\./, '');
     const formattedSubdomain = `${session.subdomain}.${cleanOastDomain}`;
 

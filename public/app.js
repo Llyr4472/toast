@@ -104,7 +104,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let fullSubdomain = apiFormattedSub;
     if (!fullSubdomain || !fullSubdomain.includes('.')) {
       const currentHost = window.location.host;
-      fullSubdomain = `${sub}.${currentHost}`;
+      let oastHost = currentHost;
+      if (currentHost.startsWith('toast.')) {
+        oastHost = currentHost.replace(/^toast\./, 't.');
+      }
+      fullSubdomain = `${sub}.${oastHost}`;
       
       if (currentHost.includes('localhost') || currentHost.includes('127.0.0.1')) {
         fullSubdomain = `${sub}.oast.local`;
