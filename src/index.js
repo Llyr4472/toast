@@ -15,6 +15,7 @@ export default {
     const pathname = url.pathname;
     const hostname = url.hostname;
 
+    // 1. CORS Preflight Handling
     if (request.method === 'OPTIONS') {
       const origin = request.headers.get('Origin') || '*';
       return new Response(null, {
@@ -28,6 +29,7 @@ export default {
       });
     }
 
+    // 2. REST API Endpoints
     if (pathname === '/api/register') return handleRegister(request, env);
     if (pathname === '/api/poll') return handlePoll(request, env);
     if (pathname === '/api/stream') return handleSSEStream(request, env);
@@ -35,15 +37,20 @@ export default {
     if (pathname === '/api/clear') return handleClear(request, env);
     if (pathname === '/api/dns-sync') return handleExternalDnsSync(request, env);
 
+    // 3. DNS-over-HTTPS (DoH) Endpoint
     if (pathname === '/dns-query') {
       return handleDoHRequest(request, env, url);
     }
 
+    // 4. Check if request is an OAST Callback vs Dashboard Access
     const payloadId = extractPayloadId(url, hostname);
+
     if (payloadId) {
+      // It's an incoming OAST callback!
       return recordAndRespondOastHttp(request, env, payloadId, url);
     }
 
+    // 5. Default to Static Assets / Dashboard UI
     if (env.ASSETS) {
       return env.ASSETS.fetch(request);
     }
@@ -88,20 +95,46 @@ export default {
   }
 };
 
+// -------------------------------------------------------------
+// Helper: Extract Payload ID from Hostname, Path, or Query
+// -------------------------------------------------------------
 function extractPayloadId(url, hostname) {
-  const parts = hostname.split('.');
-  if (parts.length >= 3) {
-    const candidate = parts[0].toLowerCase();
-    if (/^[a-z0-9]{4,16}$/.test(candidate) && candidate !== 'api' && candidate !== 'oast' && candidate !== 'www') {
+  const lowerHost = hostname.toLowerCase();
+  const parts = lowerHost.split('.');
+
+  // Exclude system words
+  const reservedWords = ['toast', 'api', 'oast', 'www', 'dashboard', 'app', 'admin'];
+
+  // Case A: Cloudflare Workers default domain (*.workers.dev)
+  if (lowerHost.endsWith('.workers.dev')) {
+    // Base URL is <worker-name>.<user-subdomain>.workers.dev (4 parts) e.g. toast.mr-prashant2077.workers.dev
+    // Payload subdomain has 5 or more parts e.g. a1b2.toast.mr-prashant2077.workers.dev
+    if (parts.length >= 5) {
+      const candidate = parts[0];
+      if (/^[a-z0-9]{4,16}$/.test(candidate) && !reservedWords.includes(candidate)) {
+        return candidate;
+      }
+    }
+  } else {
+    // Custom domain e.g. a1b2.oast.yourdomain.com or a1b2.yourdomain.com
+    if (parts.length >= 3) {
+      const candidate = parts[0];
+      if (/^[a-z0-9]{4,16}$/.test(candidate) && !reservedWords.includes(candidate)) {
+        return candidate;
+      }
+    }
+  }
+
+  // Case B: Explicit URL Path `/p/a1b2` or `/payload/a1b2`
+  const pathParts = url.pathname.split('/');
+  if ((pathParts[1] === 'p' || pathParts[1] === 'payload') && pathParts[2]) {
+    const candidate = pathParts[2].toLowerCase();
+    if (/^[a-z0-9]{4,16}$/.test(candidate)) {
       return candidate;
     }
   }
 
-  const pathParts = url.pathname.split('/');
-  if ((pathParts[1] === 'p' || pathParts[1] === 'payload') && pathParts[2]) {
-    return pathParts[2].toLowerCase();
-  }
-
+  // Case C: Query Parameter `?oast=a1b2` or `?payload=a1b2` or `?id=a1b2`
   const param = url.searchParams.get('oast') || url.searchParams.get('payload') || url.searchParams.get('id');
   if (param && /^[a-z0-9]{4,16}$/.test(param)) {
     return param.toLowerCase();
@@ -110,6 +143,9 @@ function extractPayloadId(url, hostname) {
   return null;
 }
 
+// -------------------------------------------------------------
+// Helper: Record HTTP Interaction & Serve Custom/Default Response
+// -------------------------------------------------------------
 async function recordAndRespondOastHttp(request, env, payloadId, url) {
   const clientIp = request.headers.get('cf-connecting-ip') || '0.0.0.0';
   const country = request.cf?.country || 'XX';
@@ -177,6 +213,9 @@ async function recordAndRespondOastHttp(request, env, payloadId, url) {
   });
 }
 
+// -------------------------------------------------------------
+// Helper: DoH (DNS-over-HTTPS) Handler
+// -------------------------------------------------------------
 async function handleDoHRequest(request, env, url) {
   const name = url.searchParams.get('name') || '';
   const type = url.searchParams.get('type') || 'A';
