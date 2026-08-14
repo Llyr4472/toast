@@ -1,15 +1,14 @@
-// Toastify OAST - Web Dashboard Frontend Script
+// Toast - Dashboard Script
 
 document.addEventListener('DOMContentLoaded', () => {
-  let sessionToken = localStorage.getItem('toastify_token');
-  let payloadId = localStorage.getItem('toastify_subdomain');
+  let sessionToken = localStorage.getItem('toast_token');
+  let payloadId = localStorage.getItem('toast_subdomain');
   let interactions = [];
   let currentFilter = 'all';
   let selectedLogId = null;
   let sseSource = null;
   let pollInterval = null;
 
-  // DOM Elements
   const subdomainDisplay = document.getElementById('subdomainDisplay');
   const sessionTokenDisplay = document.getElementById('sessionTokenDisplay');
   const interactionCount = document.getElementById('interactionCount');
@@ -37,7 +36,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const mockSettingsBtn = document.getElementById('mockSettingsBtn');
   const copyRawBtn = document.getElementById('copyRawBtn');
 
-  // Modal Elements
   const mockModal = document.getElementById('mockModal');
   const closeMockModal = document.getElementById('closeMockModal');
   const cancelMockBtn = document.getElementById('cancelMockBtn');
@@ -47,7 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const mockBody = document.getElementById('mockBody');
   const mockDnsTxt = document.getElementById('mockDnsTxt');
 
-  // Initialize App
   init();
 
   async function init() {
@@ -60,12 +57,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // -------------------------------------------------------------
-  // Session API & Management
-  // -------------------------------------------------------------
   async function createNewSession() {
     try {
-      statusBadge.textContent = 'Registering...';
+      statusBadge.textContent = 'Connecting...';
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -75,8 +69,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.success) {
         sessionToken = data.token;
         payloadId = data.subdomain;
-        localStorage.setItem('toastify_token', sessionToken);
-        localStorage.setItem('toastify_subdomain', payloadId);
+        localStorage.setItem('toast_token', sessionToken);
+        localStorage.setItem('toast_subdomain', payloadId);
         
         interactions = [];
         selectedLogId = null;
@@ -84,11 +78,10 @@ document.addEventListener('DOMContentLoaded', () => {
         updateSubdomainUI(payloadId);
         startLiveStream();
       } else {
-        alert('Failed to initialize session: ' + data.error);
+        alert('Session error: ' + data.error);
       }
     } catch (e) {
-      statusBadge.textContent = 'Offline / Standalone';
-      console.warn('Backend API connection warning:', e);
+      statusBadge.textContent = 'Offline';
     }
   }
 
@@ -96,7 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentHost = window.location.host;
     let fullSubdomain = `${sub}.${currentHost}`;
     
-    // If running locally or on localhost port
     if (currentHost.includes('localhost') || currentHost.includes('127.0.0.1')) {
       fullSubdomain = `${sub}.oast.local`;
     }
@@ -107,9 +99,6 @@ document.addEventListener('DOMContentLoaded', () => {
     statusBadge.className = 'badge badge-light';
   }
 
-  // -------------------------------------------------------------
-  // SSE Real-time Feed & Polling Fallback
-  // -------------------------------------------------------------
   function startLiveStream() {
     if (sseSource) sseSource.close();
     if (pollInterval) clearInterval(pollInterval);
@@ -126,13 +115,11 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
           const item = JSON.parse(e.data);
           addInteraction(item);
-        } catch (err) {
-          console.error('Failed to parse SSE event data', err);
-        }
+        } catch (err) {}
       });
 
       sseSource.onerror = () => {
-        statusBadge.textContent = 'Polling fallback';
+        statusBadge.textContent = 'Polling';
         sseSource.close();
         startPolling();
       };
@@ -155,9 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.success && data.interactions.length > 0) {
         data.interactions.forEach(addInteraction);
       }
-    } catch (e) {
-      console.warn('Poll request error:', e);
-    }
+    } catch (e) {}
   }
 
   function addInteraction(item) {
@@ -167,9 +152,6 @@ document.addEventListener('DOMContentLoaded', () => {
     renderLogs();
   }
 
-  // -------------------------------------------------------------
-  // Render & UI Handlers
-  // -------------------------------------------------------------
   function renderLogs() {
     const filtered = interactions.filter(item => {
       if (currentFilter === 'all') return true;
@@ -244,20 +226,17 @@ document.addEventListener('DOMContentLoaded', () => {
     parsedOutput.textContent = JSON.stringify(item.parsed_data || item, null, 2);
   }
 
-  // -------------------------------------------------------------
-  // Setup Event Listeners & Templates
-  // -------------------------------------------------------------
   function setupEventListeners() {
     newSessionBtn.addEventListener('click', createNewSession);
 
     copySubdomainBtn.addEventListener('click', () => {
       copyToClipboard(subdomainDisplay.textContent);
-      copySubdomainBtn.textContent = 'Copied!';
+      copySubdomainBtn.textContent = 'Copied';
       setTimeout(() => copySubdomainBtn.textContent = 'Copy Domain', 1800);
     });
 
     clearLogsBtn.addEventListener('click', async () => {
-      if (!confirm('Clear all recorded interactions for this session?')) return;
+      if (!confirm('Clear interaction logs?')) return;
       await fetch(`/api/clear?token=${encodeURIComponent(sessionToken)}`, { method: 'DELETE' });
       interactions = [];
       selectedLogId = null;
@@ -273,9 +252,8 @@ document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => copyRawBtn.textContent = 'Copy Raw', 1500);
     });
 
-    // Filter Buttons
     document.querySelectorAll('.filter-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', () => {
         document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         currentFilter = btn.dataset.filter;
@@ -283,7 +261,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // Detail Tabs
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -298,7 +275,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // Payload Template Chips
     document.querySelectorAll('.chip').forEach(chip => {
       chip.addEventListener('click', () => {
         const type = chip.dataset.template;
@@ -317,12 +293,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         copyToClipboard(textToCopy);
         const original = chip.textContent;
-        chip.textContent = 'Copied!';
+        chip.textContent = 'Copied';
         setTimeout(() => chip.textContent = original, 1500);
       });
     });
 
-    // Custom Mock Modal Handlers
     mockSettingsBtn.addEventListener('click', async () => {
       mockModal.classList.remove('hidden');
       const res = await fetch(`/api/mock?token=${encodeURIComponent(sessionToken)}`);
@@ -353,7 +328,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       mockModal.classList.add('hidden');
-      alert('Custom mock response saved.');
     });
   }
 

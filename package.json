@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "db:init": "wrangler d1 execute toastify-db --local --file=./schema.sql",
-    "db:init:prod": "wrangler d1 execute toastify-db --remote --file=./schema.sql",
+    "db:init": "wrangler d1 execute toast-db --local --file=./schema.sql",
+    "db:init:prod": "wrangler d1 execute toast-db --remote --file=./schema.sql",
     "cli": "node cli/oast-cli.js"
   },
   "keywords": [

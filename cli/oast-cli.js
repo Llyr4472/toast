@@ -1,11 +1,8 @@
 #!/usr/bin/env node
-// Toastify OAST - Command Line Client (Interactsh / Burp Collaborator CLI style)
 
 const http = require('http');
 const https = require('https');
-const readline = require('readline');
 
-// Color helpers for terminal output
 const colors = {
   reset: '\x1b[0m',
   bold: '\x1b[1m',
@@ -14,25 +11,23 @@ const colors = {
   green: '\x1b[32m',
   yellow: '\x1b[33m',
   magenta: '\x1b[35m',
-  red: '\x1b[31m',
-  bgDark: '\x1b[40m'
+  red: '\x1b[31m'
 };
 
-const serverUrl = process.env.TOASTIFY_URL || process.argv[2] || 'http://localhost:8787';
+const serverUrl = process.env.TOAST_URL || process.argv[2] || 'http://localhost:8787';
 
 console.log(`${colors.bold}${colors.cyan}
-    _____             _____  _____ _______     __  ____    A   _____ _______ 
-   |_   _|           / ____||_   _|  __ \\ \\   / / / __ \\  / \\  / ____|__   __|
-     | |  ___   __ _| (___    | |  | |__) \\ \\_/ / | |  | |/  \\| (___    | |   
-     | | / _ \\ / _\` |\\___ \\   | |  |  ___/ \\   /  | |  | / /\\ \\\\___ \\   | |   
-    _| || (_) | (_| |____) | _| |_ | |      | |   | |__| / ____ \\___) |  | |   
-   |_____\\___/ \\__,_|_____/ |_____||_|      |_|    \\____/_/    \\_#####/   |_|   
+  _______ ____    _    ____ _____ 
+ |_______/ __ \\  / \\  / ___|_   _|
+    | | | |  | |/ _ \\ \\___ \\ | |  
+    | | | |__| / ___ \\ ___) || |  
+    |_|  \\____/_/   \\_\\____/ |_|  
 ${colors.reset}`);
-console.log(`${colors.dim}   Toastify OAST Client v1.0.0 — Out-of-Band Security Interaction Monitor${colors.reset}\n`);
+console.log(`${colors.dim}Toast CLI Client v1.0.0${colors.reset}\n`);
 
 async function main() {
   try {
-    console.log(`${colors.dim}[*] Registering new session with OAST server at ${serverUrl}...${colors.reset}`);
+    console.log(`${colors.dim}[*] Registering session at ${serverUrl}...${colors.reset}`);
     
     const regRes = await makeRequest(`${serverUrl}/api/register`, {
       method: 'POST',
@@ -48,20 +43,19 @@ async function main() {
     const { token, subdomain, payload_id } = regRes;
     const cleanServerHost = serverUrl.replace(/^https?:\/\//, '');
 
-    console.log(`${colors.green}${colors.bold}[+] Session Registered Successfully!${colors.reset}`);
-    console.log(`${colors.bold}====================================================${colors.reset}`);
+    console.log(`${colors.green}${colors.bold}[+] Session registered!${colors.reset}`);
+    console.log(`${colors.bold}----------------------------------------------------${colors.reset}`);
     console.log(` Payload ID   : ${colors.bold}${colors.cyan}${payload_id}${colors.reset}`);
     console.log(` OAST Domain  : ${colors.bold}${colors.yellow}${subdomain}.${cleanServerHost}${colors.reset}`);
     console.log(` HTTP Payload : ${colors.yellow}http://${subdomain}.${cleanServerHost}${colors.reset}`);
     console.log(` Log4j Payload: ${colors.yellow}\${jndi:ldap://${subdomain}.${cleanServerHost}/a}${colors.reset}`);
     console.log(` Email Payload: ${colors.yellow}callback@${subdomain}.${cleanServerHost}${colors.reset}`);
     console.log(` Session Token: ${colors.dim}${token}${colors.reset}`);
-    console.log(`${colors.bold}====================================================${colors.reset}`);
-    console.log(`${colors.dim}[*] Listening for incoming out-of-band interactions (Ctrl+C to quit)...${colors.reset}\n`);
+    console.log(`${colors.bold}----------------------------------------------------${colors.reset}`);
+    console.log(`${colors.dim}[*] Listening for interactions (Press Ctrl+C to quit)...${colors.reset}\n`);
 
     let lastId = 0;
 
-    // Start Polling Loop
     setInterval(async () => {
       try {
         const pollRes = await makeRequest(`${serverUrl}/api/poll?token=${token}&since_id=${lastId}`);
@@ -71,9 +65,7 @@ async function main() {
             printInteraction(item);
           });
         }
-      } catch (e) {
-        // Silent poll error
-      }
+      } catch (e) {}
     }, 2000);
 
   } catch (err) {
@@ -87,17 +79,17 @@ function printInteraction(item) {
   if (item.type === 'dns') typeColor = colors.yellow;
   if (item.type === 'email') typeColor = colors.magenta;
 
-  console.log(`${colors.bold}[${timestamp}] ${typeColor}[${(item.type || 'HTTP').toUpperCase()}]${colors.reset} Interaction detected!`);
-  console.log(`  ├── Source IP   : ${colors.bold}${item.source_ip || '0.0.0.0'}${colors.reset} (${item.geolocation || 'Unknown'})`);
-  console.log(`  ├── Protocol    : ${item.protocol || 'HTTP/1.1'}`);
-  console.log(`  ├── Method/Type : ${item.method || 'GET'}`);
+  console.log(`${colors.bold}[${timestamp}] ${typeColor}[${(item.type || 'HTTP').toUpperCase()}]${colors.reset} Interaction received`);
+  console.log(`  Source IP   : ${colors.bold}${item.source_ip || '0.0.0.0'}${colors.reset} (${item.geolocation || 'Unknown'})`);
+  console.log(`  Protocol    : ${item.protocol || 'HTTP/1.1'}`);
+  console.log(`  Method/Type : ${item.method || 'GET'}`);
   
   if (item.parsed_data) {
     if (item.type === 'email') {
-      console.log(`  ├── Sender      : ${item.parsed_data.sender || 'Unknown'}`);
-      console.log(`  └── Subject     : ${item.parsed_data.subject || '(No Subject)'}`);
+      console.log(`  Sender      : ${item.parsed_data.sender || 'Unknown'}`);
+      console.log(`  Subject     : ${item.parsed_data.subject || '(No Subject)'}`);
     } else if (item.parsed_data.url) {
-      console.log(`  └── URL Path    : ${item.parsed_data.url}`);
+      console.log(`  URL Path    : ${item.parsed_data.url}`);
     }
   }
   console.log('');

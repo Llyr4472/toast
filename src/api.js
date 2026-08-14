@@ -1,10 +1,10 @@
-// Toastify OAST - API & Interaction Handler Core
+// Toast - API & Interaction Handler
 
 export async function handleRegister(request, env) {
   try {
     const clientIp = request.headers.get('cf-connecting-ip') || '127.0.0.1';
     
-    // Rate Limiting: Max 30 session registrations per hour per IP
+    // Rate limit: Max 100 session registrations per hour globally
     const recentRegs = await env.DB.prepare(
       `SELECT COUNT(*) as count FROM sessions WHERE created_at > datetime('now', '-1 hour')`
     ).first();
@@ -16,11 +16,9 @@ export async function handleRegister(request, env) {
     const body = await request.json().catch(() => ({}));
     const sessionName = (body.name || 'OAST Session').substring(0, 50);
     
-    // Generate secure random session token and 8-char payload subdomain ID
     const token = 's_' + crypto.randomUUID().replace(/-/g, '');
     const payloadId = Math.random().toString(36).substring(2, 10);
     
-    // Calculate expiration (default 48 hours)
     const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
     
     await env.DB.prepare(
@@ -49,7 +47,6 @@ export async function handlePoll(request, env) {
   }
 
   try {
-    // Validate session
     const session = await env.DB.prepare(
       `SELECT * FROM sessions WHERE token = ?`
     ).bind(token).first();
@@ -64,7 +61,6 @@ export async function handlePoll(request, env) {
 
     const parsedResults = results.map(row => {
       let parsed = {};
-      let raw = row.raw_data;
       try {
         parsed = JSON.parse(row.parsed_data || '{}');
       } catch (e) {
@@ -94,18 +90,14 @@ export async function handleSSEStream(request, env) {
     return new Response('Unauthorized: Missing token', { status: 401 });
   }
 
-  // Create readable stream for Server-Sent Events (SSE)
   let timerId = null;
   let lastId = parseInt(url.searchParams.get('since_id') || '0', 10);
 
   const stream = new ReadableStream({
     start(controller) {
       const encoder = new TextEncoder();
-
-      // Send initial heartbeat
       controller.enqueue(encoder.encode(`event: connected\ndata: {"status":"connected"}\n\n`));
 
-      // Poll D1 every 2 seconds for new interactions
       timerId = setInterval(async () => {
         try {
           const { results } = await env.DB.prepare(
@@ -121,12 +113,9 @@ export async function handleSSEStream(request, env) {
               controller.enqueue(encoder.encode(`event: interaction\ndata: ${eventPayload}\n\n`));
             }
           } else {
-            // Heartbeat
             controller.enqueue(encoder.encode(`: ping\n\n`));
           }
-        } catch (err) {
-          // Silent error handling in background stream
-        }
+        } catch (err) {}
       }, 2000);
     },
     cancel() {
@@ -197,9 +186,8 @@ export async function handleClear(request, env) {
 }
 
 export async function handleExternalDnsSync(request, env) {
-  // Allows the standalone UDP 53 DNS daemon to push DNS events to Cloudflare D1
-  const secretKey = request.headers.get('X-Toastify-Secret');
-  const expectedSecret = env.DNS_SYNC_SECRET || 'toastify-default-secret';
+  const secretKey = request.headers.get('X-Toast-Secret');
+  const expectedSecret = env.DNS_SYNC_SECRET || 'toast-default-secret';
 
   if (secretKey !== expectedSecret) {
     return jsonResponse({ error: 'Unauthorized DNS Sync' }, 401);
@@ -208,7 +196,6 @@ export async function handleExternalDnsSync(request, env) {
   try {
     const { payload_id, type, method, source_ip, raw_data, parsed_data } = await request.json();
 
-    // Look up session matching payload_id
     const session = await env.DB.prepare(`SELECT token FROM sessions WHERE subdomain = ?`).bind(payload_id).first();
     const sessionId = session ? session.token : 'anonymous';
 
@@ -223,7 +210,6 @@ export async function handleExternalDnsSync(request, env) {
   }
 }
 
-// Utility helper function for JSON response
 function jsonResponse(data, status = 200, request = null) {
   const origin = request ? (request.headers.get('Origin') || '*') : '*';
   return new Response(JSON.stringify(data), {
@@ -231,7 +217,7 @@ function jsonResponse(data, status = 200, request = null) {
     headers: {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': origin,
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Toastify-Secret',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Toast-Secret',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
     }
   });

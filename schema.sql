@@ -1,4 +1,4 @@
--- Toastify OAST Database Schema for Cloudflare D1
+-- Toast Database Schema for Cloudflare D1
 
 CREATE TABLE IF NOT EXISTS sessions (
   token TEXT PRIMARY KEY,
@@ -31,12 +31,11 @@ CREATE TABLE IF NOT EXISTS mock_responses (
   http_status INTEGER DEFAULT 200,
   http_headers TEXT DEFAULT '{"Content-Type": "text/plain"}',
   http_body TEXT DEFAULT 'OK',
-  dns_txt TEXT DEFAULT 'toastify-verification-token',
+  dns_txt TEXT DEFAULT 'toast-verification-token',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (session_id) REFERENCES sessions(token) ON DELETE CASCADE
 );
 
--- Performance Indexes
 CREATE INDEX IF NOT EXISTS idx_interactions_session ON interactions(session_id);
 CREATE INDEX IF NOT EXISTS idx_interactions_payload ON interactions(payload_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_subdomain ON sessions(subdomain);

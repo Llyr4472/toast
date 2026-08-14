@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Toastify OAST — Out-of-Band Interaction Gatherer</title>
+  <title>Toast OAST</title>
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,10 +11,9 @@
 </head>
 <body>
   <div class="app-container">
-    <!-- Top Navigation Header -->
     <header class="navbar">
       <div class="brand">
-        <span class="brand-title">Toast OAST</span>
+        <span class="brand-title">Toast</span>
         <span class="badge badge-light" id="statusBadge">Connecting...</span>
       </div>
       <div class="nav-actions">
@@ -30,11 +29,10 @@
       </div>
     </header>
 
-    <!-- Main Active Subdomain Banner -->
     <section class="banner">
       <div class="subdomain-card">
         <div class="subdomain-info">
-          <span class="label">Your Unique OAST Subdomain</span>
+          <span class="label">OAST Subdomain</span>
           <div class="subdomain-box">
             <code id="subdomainDisplay">loading...</code>
             <button class="btn btn-primary btn-sm" id="copySubdomainBtn">Copy Domain</button>
@@ -48,21 +46,18 @@
       </div>
     </section>
 
-    <!-- Payload Quick Tools Bar -->
     <section class="payload-bar">
-      <span class="payload-bar-label">Payload Templates:</span>
+      <span class="payload-bar-label">Payloads:</span>
       <button class="chip" data-template="subdomain">Subdomain</button>
       <button class="chip" data-template="http">HTTP URL</button>
-      <button class="chip" data-template="log4j">Log4j / JNDI</button>
+      <button class="chip" data-template="log4j">Log4j</button>
       <button class="chip" data-template="ssrf">SSRF</button>
-      <button class="chip" data-template="xxe">XXE Entity</button>
+      <button class="chip" data-template="xxe">XXE</button>
       <button class="chip" data-template="xss">Blind XSS</button>
-      <button class="chip" data-template="email">SMTP Email</button>
+      <button class="chip" data-template="email">Email</button>
     </section>
 
-    <!-- Main Log View Layout (Split View: Log List + Raw Detail Drawer) -->
     <main class="main-layout">
-      <!-- Left Panel: Filter & Log List -->
       <div class="logs-panel">
         <div class="panel-header">
           <div class="filter-group">
@@ -71,22 +66,21 @@
             <button class="filter-btn" data-filter="dns">DNS</button>
             <button class="filter-btn" data-filter="email">Email</button>
           </div>
-          <span class="live-indicator"><span class="dot"></span> Live updates</span>
+          <span class="live-indicator"><span class="dot"></span> Live</span>
         </div>
 
         <div class="log-list-container" id="logList">
           <div class="empty-state" id="emptyState">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
             <p>Listening for out-of-band interactions...</p>
-            <span class="subtext">Send DNS, HTTP, or Email requests to your subdomain above to test.</span>
+            <span class="subtext">Send DNS, HTTP, or Email requests to your subdomain above.</span>
           </div>
         </div>
       </div>
 
-      <!-- Right Panel: Raw Interaction Detail -->
       <div class="detail-panel" id="detailPanel">
         <div class="detail-empty" id="detailEmpty">
-          <p>Select an interaction from the log list to inspect headers, raw payloads, and metadata.</p>
+          <p>Select an interaction from the log list to view details.</p>
         </div>
         <div class="detail-content hidden" id="detailContent">
           <div class="detail-header">
@@ -135,7 +129,6 @@
     </main>
   </div>
 
-  <!-- Custom Mock Settings Modal -->
   <div class="modal-backdrop hidden" id="mockModal">
     <div class="modal">
       <div class="modal-header">
@@ -143,27 +136,27 @@
         <button class="modal-close" id="closeMockModal">&times;</button>
       </div>
       <div class="modal-body">
-        <p class="subtext">Specify the HTTP response code, headers, and DNS records returned when targets access your subdomain.</p>
+        <p class="subtext">Configure custom HTTP responses and DNS records returned for your subdomain.</p>
         <div class="form-group">
-          <label>HTTP Response Status Code</label>
+          <label>HTTP Status Code</label>
           <input type="number" id="mockStatus" value="200" class="input">
         </div>
         <div class="form-group">
-          <label>HTTP Response Headers (JSON)</label>
-          <textarea id="mockHeaders" class="textarea monospace" rows="3">{"Content-Type": "text/plain", "X-Custom-Proof": "vulnerable"}</textarea>
+          <label>HTTP Headers (JSON)</label>
+          <textarea id="mockHeaders" class="textarea monospace" rows="3">{"Content-Type": "text/plain", "X-Mock": "active"}</textarea>
         </div>
         <div class="form-group">
           <label>HTTP Response Body</label>
-          <textarea id="mockBody" class="textarea monospace" rows="4">OK - Toastify OAST Callback Received</textarea>
+          <textarea id="mockBody" class="textarea monospace" rows="4">OK</textarea>
         </div>
         <div class="form-group">
-          <label>DNS TXT Record Return Value</label>
-          <input type="text" id="mockDnsTxt" value="toastify-verification-token" class="input monospace">
+          <label>DNS TXT Record</label>
+          <input type="text" id="mockDnsTxt" value="toast-verification-token" class="input monospace">
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" id="cancelMockBtn">Cancel</button>
-        <button class="btn btn-primary" id="saveMockBtn">Save Custom Response</button>
+        <button class="btn btn-primary" id="saveMockBtn">Save Response</button>
       </div>
     </div>
   </div>
