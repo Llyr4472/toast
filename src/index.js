@@ -52,7 +52,12 @@ export default {
 
     // 5. Default to Static Assets / Dashboard UI
     if (env.ASSETS) {
-      return env.ASSETS.fetch(request);
+      let assetRequest = request;
+      if (url.pathname === '/' || url.pathname === '') {
+        const assetUrl = new URL('/index.html', request.url);
+        assetRequest = new Request(assetUrl.toString(), request);
+      }
+      return env.ASSETS.fetch(assetRequest);
     }
 
     return new Response('Toast OAST Server Active.', { status: 200 });
