@@ -17,12 +17,10 @@ export async function handleRegister(request, env) {
     const sessionName = (body.name || 'OAST Session').substring(0, 50);
     const idLen = (body.short || body.length === 4) ? 4 : 8;
     
-    // Configurable duration: Default 48 hrs, Min 1 hr, Max 168 hrs (7 days)
     const hours = Math.min(Math.max(parseInt(body.hours || body.duration_hours || 48, 10), 1), 168);
     const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
     const nowIso = new Date().toISOString();
 
-    // Auto-cleanup expired sessions
     await env.DB.prepare(`DELETE FROM sessions WHERE expires_at < ?`).bind(nowIso).run().catch(() => {});
 
     const token = 's_' + crypto.randomUUID().replace(/-/g, '');
@@ -32,11 +30,24 @@ export async function handleRegister(request, env) {
       `INSERT INTO sessions (token, subdomain, name, expires_at) VALUES (?, ?, ?, ?)`
     ).bind(token, payloadId, sessionName, expiresAt).run();
 
+    // Compute configured OAST & Dashboard domain strings from environment
+    const oastDomain = env.OAST_DOMAIN || env.BASE_DOMAIN || '';
+    const dashboardDomain = env.DASHBOARD_DOMAIN || env.BASE_DOMAIN || '';
+
+    let formattedSubdomain = payloadId;
+    if (oastDomain) {
+      const cleanOastDomain = oastDomain.replace(/^https?:\/\//, '').replace(/^\*\./, '');
+      formattedSubdomain = `${payloadId}.${cleanOastDomain}`;
+    }
+
     return jsonResponse({
       success: true,
       token,
       payload_id: payloadId,
       subdomain: payloadId,
+      full_subdomain: formattedSubdomain,
+      oast_domain: oastDomain,
+      dashboard_domain: dashboardDomain,
       expires_at: expiresAt
     }, 200, request);
   } catch (err) {
@@ -79,9 +90,17 @@ export async function handlePoll(request, env) {
       };
     });
 
+    const oastDomain = env.OAST_DOMAIN || env.BASE_DOMAIN || '';
+    let formattedSubdomain = session.subdomain;
+    if (oastDomain) {
+      const cleanOastDomain = oastDomain.replace(/^https?:\/\//, '').replace(/^\*\./, '');
+      formattedSubdomain = `${session.subdomain}.${cleanOastDomain}`;
+    }
+
     return jsonResponse({
       success: true,
       subdomain: session.subdomain,
+      full_subdomain: formattedSubdomain,
       interactions: parsedResults
     }, 200, request);
   } catch (err) {

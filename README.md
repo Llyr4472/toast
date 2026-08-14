@@ -92,6 +92,27 @@ To run a standalone DNS daemon on UDP port 53:
 WORKER_URL="https://toast.<your-subdomain>.workers.dev" DNS_SECRET="toast-default-secret" node dns-server/dns-daemon.js
 ```
 
+## Custom Domains & Environment Variables
+
+Toast supports separate custom subdomains for the Dashboard UI and OAST callbacks via Cloudflare environment variables:
+
+| Variable | Description | Example |
+| :--- | :--- | :--- |
+| `OAST_DOMAIN` | Domain for OAST callbacks (e.g. `nfdh.t.domain.com`) | `"t.prashantgiri360.com.np"` |
+| `DASHBOARD_DOMAIN` | Domain serving the Dashboard UI | `"toast.prashantgiri360.com.np"` |
+| `BASE_DOMAIN` | Fallback base domain | `"prashantgiri360.com.np"` |
+
+Add environment variables in `wrangler.jsonc`:
+
+```json
+"vars": {
+  "OAST_DOMAIN": "t.prashantgiri360.com.np",
+  "DASHBOARD_DOMAIN": "toast.prashantgiri360.com.np"
+}
+```
+
+---
+
 ## License
 
 MIT

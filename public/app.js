@@ -3,6 +3,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   let sessionToken = localStorage.getItem('toast_token');
   let payloadId = localStorage.getItem('toast_subdomain');
+  let fullSubdomainApi = localStorage.getItem('toast_full_subdomain');
   let interactions = [];
   let currentFilter = 'all';
   let selectedLogId = null;
@@ -56,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!sessionToken || !payloadId) {
       await createNewSession();
     } else {
-      updateSubdomainUI(payloadId);
+      updateSubdomainUI(payloadId, fullSubdomainApi);
       startPolling();
     }
   }
@@ -78,13 +79,16 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.success) {
         sessionToken = data.token;
         payloadId = data.subdomain;
+        fullSubdomainApi = data.full_subdomain || null;
+
         localStorage.setItem('toast_token', sessionToken);
         localStorage.setItem('toast_subdomain', payloadId);
+        if (fullSubdomainApi) localStorage.setItem('toast_full_subdomain', fullSubdomainApi);
         
         interactions = [];
         selectedLogId = null;
         renderLogs();
-        updateSubdomainUI(payloadId);
+        updateSubdomainUI(payloadId, fullSubdomainApi);
         startPolling();
       } else {
         statusBadge.textContent = 'Error';
@@ -96,12 +100,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function updateSubdomainUI(sub) {
-    const currentHost = window.location.host;
-    let fullSubdomain = `${sub}.${currentHost}`;
-    
-    if (currentHost.includes('localhost') || currentHost.includes('127.0.0.1')) {
-      fullSubdomain = `${sub}.oast.local`;
+  function updateSubdomainUI(sub, apiFormattedSub) {
+    let fullSubdomain = apiFormattedSub;
+    if (!fullSubdomain) {
+      const currentHost = window.location.host;
+      fullSubdomain = `${sub}.${currentHost}`;
+      
+      if (currentHost.includes('localhost') || currentHost.includes('127.0.0.1')) {
+        fullSubdomain = `${sub}.oast.local`;
+      }
     }
 
     subdomainDisplay.textContent = fullSubdomain;
@@ -131,8 +138,10 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn('Session expired or invalid, creating fresh session...');
         localStorage.removeItem('toast_token');
         localStorage.removeItem('toast_subdomain');
+        localStorage.removeItem('toast_full_subdomain');
         sessionToken = null;
         payloadId = null;
+        fullSubdomainApi = null;
         await createNewSession();
         return;
       }
@@ -140,6 +149,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.success) {
         statusBadge.textContent = 'Live';
         statusBadge.className = 'badge badge-light';
+        if (data.full_subdomain && data.full_subdomain !== fullSubdomainApi) {
+          fullSubdomainApi = data.full_subdomain;
+          localStorage.setItem('toast_full_subdomain', fullSubdomainApi);
+          updateSubdomainUI(payloadId, fullSubdomainApi);
+        }
         if (data.interactions && data.interactions.length > 0) {
           data.interactions.forEach(addInteraction);
         }

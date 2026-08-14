@@ -43,7 +43,7 @@ export default {
     }
 
     // 4. Check if request is an OAST Callback vs Dashboard Access
-    const payloadId = extractPayloadId(url, hostname);
+    const payloadId = extractPayloadId(url, hostname, env);
 
     if (payloadId) {
       // It's an incoming OAST callback!
@@ -98,17 +98,34 @@ export default {
 // -------------------------------------------------------------
 // Helper: Extract Payload ID from Hostname, Path, or Query
 // -------------------------------------------------------------
-function extractPayloadId(url, hostname) {
+function extractPayloadId(url, hostname, env = {}) {
   const lowerHost = hostname.toLowerCase();
   const parts = lowerHost.split('.');
 
-  // Exclude system words
   const reservedWords = ['toast', 'api', 'oast', 'www', 'dashboard', 'app', 'admin'];
 
-  // Case A: Cloudflare Workers default domain (*.workers.dev)
+  // 1. If explicit OAST_DOMAIN is configured in env (e.g. "t.prashantgiri360.com.np")
+  if (env && env.OAST_DOMAIN) {
+    const cleanOastDomain = env.OAST_DOMAIN.replace(/^https?:\/\//, '').replace(/^\*\./, '').toLowerCase();
+    if (lowerHost.endsWith('.' + cleanOastDomain)) {
+      const prefix = lowerHost.substring(0, lowerHost.length - cleanOastDomain.length - 1);
+      const candidate = prefix.split('.')[0];
+      if (/^[a-z0-9]{4,16}$/.test(candidate) && !reservedWords.includes(candidate)) {
+        return candidate;
+      }
+    }
+  }
+
+  // 2. If DASHBOARD_DOMAIN matches exact hostname, serve Dashboard (NOT payload)
+  if (env && env.DASHBOARD_DOMAIN) {
+    const cleanDashDomain = env.DASHBOARD_DOMAIN.replace(/^https?:\/\//, '').replace(/^\*\./, '').toLowerCase();
+    if (lowerHost === cleanDashDomain) {
+      return null;
+    }
+  }
+
+  // 3. Default fallback matching for *.workers.dev or generic wildcard custom subdomains
   if (lowerHost.endsWith('.workers.dev')) {
-    // Base URL is <worker-name>.<user-subdomain>.workers.dev (4 parts) e.g. toast.mr-prashant2077.workers.dev
-    // Payload subdomain has 5 or more parts e.g. a1b2.toast.mr-prashant2077.workers.dev
     if (parts.length >= 5) {
       const candidate = parts[0];
       if (/^[a-z0-9]{4,16}$/.test(candidate) && !reservedWords.includes(candidate)) {
@@ -116,7 +133,6 @@ function extractPayloadId(url, hostname) {
       }
     }
   } else {
-    // Custom domain e.g. a1b2.oast.yourdomain.com or a1b2.yourdomain.com
     if (parts.length >= 3) {
       const candidate = parts[0];
       if (/^[a-z0-9]{4,16}$/.test(candidate) && !reservedWords.includes(candidate)) {
@@ -221,7 +237,7 @@ async function handleDoHRequest(request, env, url) {
   const type = url.searchParams.get('type') || 'A';
   const clientIp = request.headers.get('cf-connecting-ip') || '0.0.0.0';
 
-  const payloadId = extractPayloadId(url, name);
+  const payloadId = extractPayloadId(url, name, env);
 
   if (payloadId) {
     const session = await env.DB.prepare(`SELECT token FROM sessions WHERE subdomain = ?`).bind(payloadId).first();
@@ -233,7 +249,7 @@ async function handleDoHRequest(request, env, url) {
     await env.DB.prepare(`
       INSERT INTO interactions (session_id, payload_id, full_domain, type, protocol, method, source_ip, raw_data, parsed_data)
       VALUES (?, ?, ?, 'dns', 'DNS-DoH', ?, ?, ?, ?)
-    `).bind(sessionId, payloadId, name, type.toUpperCase(), clientIp, `DoH Query: ${type} ${name}`, JSON.stringify({ query: name, type, client_ip: clientIp })).run();
+    `).bind(sessionId, payload_id, name, type.toUpperCase(), clientIp, `DoH Query: ${type} ${name}`, JSON.stringify({ query: name, type, client_ip: clientIp })).run();
 
     return new Response(JSON.stringify({
       Status: 0,
