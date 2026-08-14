@@ -64,10 +64,13 @@ document.addEventListener('DOMContentLoaded', () => {
   async function createNewSession() {
     try {
       statusBadge.textContent = 'Connecting...';
+      const durationSelect = document.getElementById('sessionDurationSelect');
+      const hoursVal = durationSelect ? parseInt(durationSelect.value, 10) : 48;
+
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'Web Session', short: isShortMode })
+        body: JSON.stringify({ name: 'Web Session', short: isShortMode, hours: hoursVal })
       });
       const data = await res.json();
       if (data.success) {

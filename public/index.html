@@ -17,6 +17,12 @@
         <span class="badge badge-light" id="statusBadge">Connecting...</span>
       </div>
       <div class="nav-actions">
+        <select id="sessionDurationSelect" class="btn btn-secondary btn-sm" title="Session Duration">
+          <option value="48" selected>48h (Default)</option>
+          <option value="24">24h</option>
+          <option value="72">72h (3d)</option>
+          <option value="168">168h (7d max)</option>
+        </select>
         <button class="btn btn-secondary btn-sm" id="newSessionBtn">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
           New Session

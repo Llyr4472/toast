@@ -28,12 +28,19 @@ console.log(`${colors.dim}Toast CLI Client v1.0.0${colors.reset}\n`);
 async function main() {
   try {
     const isShort = process.argv.includes('--short') || process.argv.includes('-s');
+    
+    let hours = 48;
+    const hoursIdx = Math.max(process.argv.indexOf('--hours'), process.argv.indexOf('-h'));
+    if (hoursIdx !== -1 && process.argv[hoursIdx + 1]) {
+      hours = parseInt(process.argv[hoursIdx + 1], 10) || 48;
+    }
+
     console.log(`${colors.dim}[*] Registering session at ${serverUrl}...${colors.reset}`);
     
     const regRes = await makeRequest(`${serverUrl}/api/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'CLI Session', short: isShort })
+      body: JSON.stringify({ name: 'CLI Session', short: isShort, hours })
     });
 
     if (!regRes.success) {

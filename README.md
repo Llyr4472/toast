@@ -77,11 +77,11 @@ Dashboard will be available at `http://localhost:8787`.
 Run the terminal client to monitor interactions in real time:
 
 ```bash
-# Standard 8-character payload ID
+# Standard 48-hour session
 node cli/oast-cli.js https://toast.<your-subdomain>.workers.dev
 
-# Short 4-character payload ID
-node cli/oast-cli.js https://toast.<your-subdomain>.workers.dev --short
+# Short 4-character payload ID with 7-day (168h) max expiration
+node cli/oast-cli.js https://toast.<your-subdomain>.workers.dev --short --hours 168
 ```
 
 ## UDP DNS Daemon (Optional)

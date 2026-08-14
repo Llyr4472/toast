@@ -17,10 +17,15 @@ export async function handleRegister(request, env) {
     const sessionName = (body.name || 'OAST Session').substring(0, 50);
     const idLen = (body.short || body.length === 4) ? 4 : 8;
     
+    // Configurable duration: Default 48 hrs, Min 1 hr, Max 168 hrs (7 days)
+    const hours = Math.min(Math.max(parseInt(body.hours || body.duration_hours || 48, 10), 1), 168);
+    const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+
+    // Auto-cleanup expired sessions
+    await env.DB.prepare(`DELETE FROM sessions WHERE expires_at < CURRENT_TIMESTAMP`).run().catch(() => {});
+
     const token = 's_' + crypto.randomUUID().replace(/-/g, '');
     const payloadId = Math.random().toString(36).substring(2, 2 + idLen);
-    
-    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
     
     await env.DB.prepare(
       `INSERT INTO sessions (token, subdomain, name, expires_at) VALUES (?, ?, ?, ?)`
