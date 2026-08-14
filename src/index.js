@@ -102,13 +102,21 @@ function extractPayloadId(url, hostname, env = {}) {
   const lowerHost = hostname.toLowerCase();
   const parts = lowerHost.split('.');
 
-  const reservedWords = ['toast', 'api', 'oast', 'www', 'dashboard', 'app', 'admin'];
+  const reservedWords = ['toast', 'api', 'oast', 'www', 'dashboard', 'app', 'admin', 't'];
 
-  // 1. If explicit OAST_DOMAIN is configured in env (e.g. "t.prashantgiri360.com.np")
+  // 1. Explicit DASHBOARD_DOMAIN match -> Serve Dashboard UI (NOT payload)
+  if (env && env.DASHBOARD_DOMAIN) {
+    const cleanDash = env.DASHBOARD_DOMAIN.replace(/^https?:\/\//, '').replace(/^\*\./, '').toLowerCase();
+    if (lowerHost === cleanDash) {
+      return null;
+    }
+  }
+
+  // 2. Explicit OAST_DOMAIN match (e.g. "t.prashantgiri360.com.np")
   if (env && env.OAST_DOMAIN) {
-    const cleanOastDomain = env.OAST_DOMAIN.replace(/^https?:\/\//, '').replace(/^\*\./, '').toLowerCase();
-    if (lowerHost.endsWith('.' + cleanOastDomain)) {
-      const prefix = lowerHost.substring(0, lowerHost.length - cleanOastDomain.length - 1);
+    const cleanOast = env.OAST_DOMAIN.replace(/^https?:\/\//, '').replace(/^\*\./, '').toLowerCase();
+    if (lowerHost.endsWith('.' + cleanOast)) {
+      const prefix = lowerHost.substring(0, lowerHost.length - cleanOast.length - 1);
       const candidate = prefix.split('.')[0];
       if (/^[a-z0-9]{4,16}$/.test(candidate) && !reservedWords.includes(candidate)) {
         return candidate;
@@ -116,24 +124,25 @@ function extractPayloadId(url, hostname, env = {}) {
     }
   }
 
-  // 2. If DASHBOARD_DOMAIN matches exact hostname, serve Dashboard (NOT payload)
-  if (env && env.DASHBOARD_DOMAIN) {
-    const cleanDashDomain = env.DASHBOARD_DOMAIN.replace(/^https?:\/\//, '').replace(/^\*\./, '').toLowerCase();
-    if (lowerHost === cleanDashDomain) {
-      return null;
-    }
-  }
-
-  // 3. Default fallback matching for *.workers.dev or generic wildcard custom subdomains
-  if (lowerHost.endsWith('.workers.dev')) {
-    if (parts.length >= 5) {
+  // 3. Smart Automatic Detection for *.t.domain.tld or *.oast.domain.tld
+  // e.g. "nfdh.t.prashantgiri360.com.np" -> parts = ['nfdh', 't', 'prashantgiri360', 'com', 'np']
+  if (parts.length >= 4) {
+    if (parts[1] === 't' || parts[1] === 'oast') {
       const candidate = parts[0];
       if (/^[a-z0-9]{4,16}$/.test(candidate) && !reservedWords.includes(candidate)) {
         return candidate;
       }
     }
-  } else {
-    if (parts.length >= 3) {
+  }
+
+  // 4. If host is exact "t.domain.tld" or "toast.domain.tld", it's the base domain -> Return null (Dashboard)
+  if (parts[0] === 't' || parts[0] === 'toast' || parts[0] === 'oast') {
+    return null;
+  }
+
+  // 5. Fallback matching for *.workers.dev
+  if (lowerHost.endsWith('.workers.dev')) {
+    if (parts.length >= 5) {
       const candidate = parts[0];
       if (/^[a-z0-9]{4,16}$/.test(candidate) && !reservedWords.includes(candidate)) {
         return candidate;
