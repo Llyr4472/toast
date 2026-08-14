@@ -1,0 +1,26 @@
+{
+  "name": "toast",
+  "version": "1.0.0",
+  "description": "Self-hosted OAST (Out-of-Band Application Security Testing) server on Cloudflare Free Tier",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute toastify-db --local --file=./schema.sql",
+    "db:init:prod": "wrangler d1 execute toastify-db --remote --file=./schema.sql",
+    "cli": "node cli/oast-cli.js"
+  },
+  "keywords": [
+    "oast",
+    "oastify",
+    "interactsh",
+    "burp-collaborator",
+    "cloudflare-worker",
+    "security-testing"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.109.0"
+  }
+}

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Toastify OAST — Out-of-Band Interaction Gatherer</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Navigation Header -->
+    <header class="navbar">
+      <div class="brand">
+        <span class="brand-title">Toast OAST</span>
+        <span class="badge badge-light" id="statusBadge">Connecting...</span>
+      </div>
+      <div class="nav-actions">
+        <button class="btn btn-secondary btn-sm" id="newSessionBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          New Session
+        </button>
+        <button class="btn btn-secondary btn-sm" id="mockSettingsBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          Custom Mocks
+        </button>
+        <button class="btn btn-outline btn-sm text-danger" id="clearLogsBtn">Clear Logs</button>
+      </div>
+    </header>
+
+    <!-- Main Active Subdomain Banner -->
+    <section class="banner">
+      <div class="subdomain-card">
+        <div class="subdomain-info">
+          <span class="label">Your Unique OAST Subdomain</span>
+          <div class="subdomain-box">
+            <code id="subdomainDisplay">loading...</code>
+            <button class="btn btn-primary btn-sm" id="copySubdomainBtn">Copy Domain</button>
+          </div>
+        </div>
+        <div class="session-meta">
+          <span id="sessionTokenDisplay">Token: ---</span>
+          <span class="meta-separator">•</span>
+          <span id="interactionCount">0 interactions</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Payload Quick Tools Bar -->
+    <section class="payload-bar">
+      <span class="payload-bar-label">Payload Templates:</span>
+      <button class="chip" data-template="subdomain">Subdomain</button>
+      <button class="chip" data-template="http">HTTP URL</button>
+      <button class="chip" data-template="log4j">Log4j / JNDI</button>
+      <button class="chip" data-template="ssrf">SSRF</button>
+      <button class="chip" data-template="xxe">XXE Entity</button>
+      <button class="chip" data-template="xss">Blind XSS</button>
+      <button class="chip" data-template="email">SMTP Email</button>
+    </section>
+
+    <!-- Main Log View Layout (Split View: Log List + Raw Detail Drawer) -->
+    <main class="main-layout">
+      <!-- Left Panel: Filter & Log List -->
+      <div class="logs-panel">
+        <div class="panel-header">
+          <div class="filter-group">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="http">HTTP</button>
+            <button class="filter-btn" data-filter="dns">DNS</button>
+            <button class="filter-btn" data-filter="email">Email</button>
+          </div>
+          <span class="live-indicator"><span class="dot"></span> Live updates</span>
+        </div>
+
+        <div class="log-list-container" id="logList">
+          <div class="empty-state" id="emptyState">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            <p>Listening for out-of-band interactions...</p>
+            <span class="subtext">Send DNS, HTTP, or Email requests to your subdomain above to test.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel: Raw Interaction Detail -->
+      <div class="detail-panel" id="detailPanel">
+        <div class="detail-empty" id="detailEmpty">
+          <p>Select an interaction from the log list to inspect headers, raw payloads, and metadata.</p>
+        </div>
+        <div class="detail-content hidden" id="detailContent">
+          <div class="detail-header">
+            <div>
+              <span class="detail-type badge" id="detailTypeBadge">HTTP</span>
+              <span class="detail-title" id="detailTitle">GET /</span>
+            </div>
+            <span class="detail-time" id="detailTime">---</span>
+          </div>
+
+          <div class="detail-meta-grid">
+            <div class="meta-item">
+              <span class="meta-label">Source IP</span>
+              <span class="meta-val" id="detailIp">---</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Protocol</span>
+              <span class="meta-val" id="detailProtocol">---</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Location</span>
+              <span class="meta-val" id="detailGeo">---</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Payload ID</span>
+              <span class="meta-val" id="detailPayloadId">---</span>
+            </div>
+          </div>
+
+          <div class="tabs-container">
+            <div class="detail-tabs">
+              <button class="tab-btn active" data-tab="raw">Raw Data</button>
+              <button class="tab-btn" data-tab="parsed">Parsed JSON</button>
+            </div>
+            <button class="btn btn-secondary btn-xs" id="copyRawBtn">Copy Raw</button>
+          </div>
+
+          <div class="tab-content" id="tabRaw">
+            <pre class="code-block" id="rawOutput"></pre>
+          </div>
+          <div class="tab-content hidden" id="tabParsed">
+            <pre class="code-block" id="parsedOutput"></pre>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Custom Mock Settings Modal -->
+  <div class="modal-backdrop hidden" id="mockModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Configure Custom Mock Response</h3>
+        <button class="modal-close" id="closeMockModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="subtext">Specify the HTTP response code, headers, and DNS records returned when targets access your subdomain.</p>
+        <div class="form-group">
+          <label>HTTP Response Status Code</label>
+          <input type="number" id="mockStatus" value="200" class="input">
+        </div>
+        <div class="form-group">
+          <label>HTTP Response Headers (JSON)</label>
+          <textarea id="mockHeaders" class="textarea monospace" rows="3">{"Content-Type": "text/plain", "X-Custom-Proof": "vulnerable"}</textarea>
+        </div>
+        <div class="form-group">
+          <label>HTTP Response Body</label>
+          <textarea id="mockBody" class="textarea monospace" rows="4">OK - Toastify OAST Callback Received</textarea>
+        </div>
+        <div class="form-group">
+          <label>DNS TXT Record Return Value</label>
+          <input type="text" id="mockDnsTxt" value="toastify-verification-token" class="input monospace">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancelMockBtn">Cancel</button>
+        <button class="btn btn-primary" id="saveMockBtn">Save Custom Response</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
