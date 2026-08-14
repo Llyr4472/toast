@@ -15,9 +15,10 @@ export async function handleRegister(request, env) {
 
     const body = await request.json().catch(() => ({}));
     const sessionName = (body.name || 'OAST Session').substring(0, 50);
+    const idLen = (body.short || body.length === 4) ? 4 : 8;
     
     const token = 's_' + crypto.randomUUID().replace(/-/g, '');
-    const payloadId = Math.random().toString(36).substring(2, 10);
+    const payloadId = Math.random().toString(36).substring(2, 2 + idLen);
     
     const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
     

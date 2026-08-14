@@ -27,12 +27,13 @@ console.log(`${colors.dim}Toast CLI Client v1.0.0${colors.reset}\n`);
 
 async function main() {
   try {
+    const isShort = process.argv.includes('--short') || process.argv.includes('-s');
     console.log(`${colors.dim}[*] Registering session at ${serverUrl}...${colors.reset}`);
     
     const regRes = await makeRequest(`${serverUrl}/api/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'CLI Session' })
+      body: JSON.stringify({ name: 'CLI Session', short: isShort })
     });
 
     if (!regRes.success) {

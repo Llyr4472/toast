@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let sseSource = null;
   let pollInterval = null;
 
+  let isShortMode = localStorage.getItem('toast_short_mode') === 'true';
+
   const subdomainDisplay = document.getElementById('subdomainDisplay');
   const sessionTokenDisplay = document.getElementById('sessionTokenDisplay');
   const interactionCount = document.getElementById('interactionCount');
@@ -16,6 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const logList = document.getElementById('logList');
   const emptyState = document.getElementById('emptyState');
   
+  const newSessionBtn = document.getElementById('newSessionBtn');
+  const toggleShortBtn = document.getElementById('toggleShortBtn');
   const detailPanel = document.getElementById('detailPanel');
   const detailEmpty = document.getElementById('detailEmpty');
   const detailContent = document.getElementById('detailContent');
@@ -63,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'Web Session' })
+        body: JSON.stringify({ name: 'Web Session', short: isShortMode })
       });
       const data = await res.json();
       if (data.success) {
@@ -227,7 +231,21 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function setupEventListeners() {
+    updateShortBtnUI();
+
     newSessionBtn.addEventListener('click', createNewSession);
+
+    toggleShortBtn.addEventListener('click', async () => {
+      isShortMode = !isShortMode;
+      localStorage.setItem('toast_short_mode', isShortMode);
+      updateShortBtnUI();
+      await createNewSession();
+    });
+
+    function updateShortBtnUI() {
+      toggleShortBtn.textContent = isShortMode ? 'Short ID: ON (4ch)' : 'Short ID: OFF (8ch)';
+      toggleShortBtn.className = isShortMode ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm';
+    }
 
     copySubdomainBtn.addEventListener('click', () => {
       copyToClipboard(subdomainDisplay.textContent);

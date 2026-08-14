@@ -92,7 +92,7 @@ function extractPayloadId(url, hostname) {
   const parts = hostname.split('.');
   if (parts.length >= 3) {
     const candidate = parts[0].toLowerCase();
-    if (/^[a-z0-9]{6,16}$/.test(candidate) && candidate !== 'api' && candidate !== 'oast' && candidate !== 'www') {
+    if (/^[a-z0-9]{4,16}$/.test(candidate) && candidate !== 'api' && candidate !== 'oast' && candidate !== 'www') {
       return candidate;
     }
   }
@@ -103,7 +103,7 @@ function extractPayloadId(url, hostname) {
   }
 
   const param = url.searchParams.get('oast') || url.searchParams.get('payload') || url.searchParams.get('id');
-  if (param && /^[a-z0-9]{6,16}$/.test(param)) {
+  if (param && /^[a-z0-9]{4,16}$/.test(param)) {
     return param.toLowerCase();
   }
 
