@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   const newSessionBtn = document.getElementById('newSessionBtn');
   const toggleShortBtn = document.getElementById('toggleShortBtn');
+  const sessionDurationSelect = document.getElementById('sessionDurationSelect');
   const detailPanel = document.getElementById('detailPanel');
   const detailEmpty = document.getElementById('detailEmpty');
   const detailContent = document.getElementById('detailContent');
@@ -65,8 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
       statusBadge.textContent = 'Connecting...';
       statusBadge.className = 'badge badge-light';
       
-      const durationSelect = document.getElementById('sessionDurationSelect');
-      const hoursVal = durationSelect ? parseInt(durationSelect.value, 10) : 48;
+      const hoursVal = sessionDurationSelect ? parseInt(sessionDurationSelect.value, 10) : 48;
 
       const res = await fetch('/api/register', {
         method: 'POST',
@@ -234,9 +234,36 @@ document.addEventListener('DOMContentLoaded', () => {
   function setupEventListeners() {
     updateShortBtnUI();
 
-    newSessionBtn.addEventListener('click', createNewSession);
+    let previousDuration = sessionDurationSelect ? sessionDurationSelect.value : '48';
+
+    if (sessionDurationSelect) {
+      sessionDurationSelect.addEventListener('change', async () => {
+        if (interactions.length > 0) {
+          if (!confirm('Changing session duration will reset your current logs and subdomain. Do you want to proceed?')) {
+            sessionDurationSelect.value = previousDuration;
+            return;
+          }
+        }
+        previousDuration = sessionDurationSelect.value;
+        await createNewSession();
+      });
+    }
+
+    newSessionBtn.addEventListener('click', async () => {
+      if (interactions.length > 0) {
+        if (!confirm('Creating a new session will reset your current logs and subdomain. Do you want to proceed?')) {
+          return;
+        }
+      }
+      await createNewSession();
+    });
 
     toggleShortBtn.addEventListener('click', async () => {
+      if (interactions.length > 0) {
+        if (!confirm('Toggling short subdomain mode will reset your current logs and subdomain. Do you want to proceed?')) {
+          return;
+        }
+      }
       isShortMode = !isShortMode;
       localStorage.setItem('toast_short_mode', isShortMode);
       updateShortBtnUI();
