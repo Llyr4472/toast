@@ -34,7 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const rawOutput = document.getElementById('rawOutput');
   const parsedOutput = document.getElementById('parsedOutput');
 
-  const newSessionBtn = document.getElementById('newSessionBtn');
   const copySubdomainBtn = document.getElementById('copySubdomainBtn');
   const clearLogsBtn = document.getElementById('clearLogsBtn');
   const mockSettingsBtn = document.getElementById('mockSettingsBtn');
@@ -57,13 +56,15 @@ document.addEventListener('DOMContentLoaded', () => {
       await createNewSession();
     } else {
       updateSubdomainUI(payloadId);
-      startLiveStream();
+      startPolling();
     }
   }
 
   async function createNewSession() {
     try {
       statusBadge.textContent = 'Connecting...';
+      statusBadge.className = 'badge badge-light';
+      
       const durationSelect = document.getElementById('sessionDurationSelect');
       const hoursVal = durationSelect ? parseInt(durationSelect.value, 10) : 48;
 
@@ -72,6 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: 'Web Session', short: isShortMode, hours: hoursVal })
       });
+      
       const data = await res.json();
       if (data.success) {
         sessionToken = data.token;
@@ -83,12 +85,14 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedLogId = null;
         renderLogs();
         updateSubdomainUI(payloadId);
-        startLiveStream();
+        startPolling();
       } else {
-        alert('Session error: ' + data.error);
+        statusBadge.textContent = 'Error';
+        console.error('Session error:', data.error);
       }
     } catch (e) {
       statusBadge.textContent = 'Offline';
+      console.error('Connection error:', e);
     }
   }
 
@@ -101,55 +105,49 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     subdomainDisplay.textContent = fullSubdomain;
-    sessionTokenDisplay.textContent = `Token: ${sessionToken.substring(0, 10)}...`;
+    sessionTokenDisplay.textContent = `Token: ${sessionToken ? sessionToken.substring(0, 10) : '---'}...`;
     statusBadge.textContent = 'Live';
     statusBadge.className = 'badge badge-light';
   }
 
-  function startLiveStream() {
-    if (sseSource) sseSource.close();
-    if (pollInterval) clearInterval(pollInterval);
-
-    try {
-      const sseUrl = `/api/stream?token=${encodeURIComponent(sessionToken)}`;
-      sseSource = new EventSource(sseUrl);
-
-      sseSource.addEventListener('connected', () => {
-        statusBadge.textContent = 'Live SSE';
-      });
-
-      sseSource.addEventListener('interaction', (e) => {
-        try {
-          const item = JSON.parse(e.data);
-          addInteraction(item);
-        } catch (err) {}
-      });
-
-      sseSource.onerror = () => {
-        statusBadge.textContent = 'Polling';
-        sseSource.close();
-        startPolling();
-      };
-    } catch (e) {
-      startPolling();
-    }
-  }
-
   function startPolling() {
+    if (pollInterval) clearInterval(pollInterval);
     fetchLogs();
     pollInterval = setInterval(fetchLogs, 2500);
   }
 
   async function fetchLogs() {
-    if (!sessionToken) return;
+    if (!sessionToken) {
+      await createNewSession();
+      return;
+    }
+    
     try {
       const lastId = interactions.length > 0 ? Math.max(...interactions.map(i => i.id)) : 0;
       const res = await fetch(`/api/poll?token=${encodeURIComponent(sessionToken)}&since_id=${lastId}`);
       const data = await res.json();
-      if (data.success && data.interactions.length > 0) {
-        data.interactions.forEach(addInteraction);
+
+      if (res.status === 401 || res.status === 404 || (data.error && (data.error.includes('Invalid') || data.error.includes('expired')))) {
+        console.warn('Session expired or invalid, creating fresh session...');
+        localStorage.removeItem('toast_token');
+        localStorage.removeItem('toast_subdomain');
+        sessionToken = null;
+        payloadId = null;
+        await createNewSession();
+        return;
       }
-    } catch (e) {}
+
+      if (data.success) {
+        statusBadge.textContent = 'Live';
+        statusBadge.className = 'badge badge-light';
+        if (data.interactions && data.interactions.length > 0) {
+          data.interactions.forEach(addInteraction);
+        }
+      }
+    } catch (e) {
+      statusBadge.textContent = 'Offline';
+      console.warn('Poll fetch error:', e);
+    }
   }
 
   function addInteraction(item) {

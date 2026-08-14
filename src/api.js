@@ -20,9 +20,10 @@ export async function handleRegister(request, env) {
     // Configurable duration: Default 48 hrs, Min 1 hr, Max 168 hrs (7 days)
     const hours = Math.min(Math.max(parseInt(body.hours || body.duration_hours || 48, 10), 1), 168);
     const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+    const nowIso = new Date().toISOString();
 
     // Auto-cleanup expired sessions
-    await env.DB.prepare(`DELETE FROM sessions WHERE expires_at < CURRENT_TIMESTAMP`).run().catch(() => {});
+    await env.DB.prepare(`DELETE FROM sessions WHERE expires_at < ?`).bind(nowIso).run().catch(() => {});
 
     const token = 's_' + crypto.randomUUID().replace(/-/g, '');
     const payloadId = Math.random().toString(36).substring(2, 2 + idLen);
@@ -49,7 +50,7 @@ export async function handlePoll(request, env) {
   const lastId = parseInt(url.searchParams.get('since_id') || '0', 10);
   
   if (!token) {
-    return jsonResponse({ error: 'Missing session token' }, 401);
+    return jsonResponse({ error: 'Missing session token' }, 401, request);
   }
 
   try {
@@ -58,7 +59,7 @@ export async function handlePoll(request, env) {
     ).bind(token).first();
 
     if (!session) {
-      return jsonResponse({ error: 'Invalid or expired session token' }, 404);
+      return jsonResponse({ error: 'Invalid or expired session token' }, 404, request);
     }
 
     const { results } = await env.DB.prepare(
@@ -82,9 +83,9 @@ export async function handlePoll(request, env) {
       success: true,
       subdomain: session.subdomain,
       interactions: parsedResults
-    });
+    }, 200, request);
   } catch (err) {
-    return jsonResponse({ error: 'Failed to fetch logs: ' + err.message }, 500);
+    return jsonResponse({ error: 'Failed to fetch logs: ' + err.message }, 500, request);
   }
 }
 
@@ -143,17 +144,17 @@ export async function handleMock(request, env) {
   const token = request.headers.get('Authorization')?.replace('Bearer ', '') || url.searchParams.get('token');
 
   if (!token) {
-    return jsonResponse({ error: 'Missing session token' }, 401);
+    return jsonResponse({ error: 'Missing session token' }, 401, request);
   }
 
   const session = await env.DB.prepare(`SELECT * FROM sessions WHERE token = ?`).bind(token).first();
   if (!session) {
-    return jsonResponse({ error: 'Session not found' }, 404);
+    return jsonResponse({ error: 'Session not found' }, 404, request);
   }
 
   if (request.method === 'GET') {
     const mock = await env.DB.prepare(`SELECT * FROM mock_responses WHERE session_id = ?`).bind(token).first();
-    return jsonResponse({ success: true, mock: mock || null });
+    return jsonResponse({ success: true, mock: mock || null }, 200, request);
   }
 
   if (request.method === 'POST') {
@@ -174,21 +175,21 @@ export async function handleMock(request, env) {
           dns_txt=excluded.dns_txt
       `).bind(token, session.subdomain, status, headers, body, dnsTxt).run();
 
-      return jsonResponse({ success: true, message: 'Mock response updated' });
+      return jsonResponse({ success: true, message: 'Mock response updated' }, 200, request);
     } catch (err) {
-      return jsonResponse({ error: 'Failed to update mock: ' + err.message }, 500);
+      return jsonResponse({ error: 'Failed to update mock: ' + err.message }, 500, request);
     }
   }
 
-  return jsonResponse({ error: 'Method not allowed' }, 405);
+  return jsonResponse({ error: 'Method not allowed' }, 405, request);
 }
 
 export async function handleClear(request, env) {
   const token = request.headers.get('Authorization')?.replace('Bearer ', '') || new URL(request.url).searchParams.get('token');
-  if (!token) return jsonResponse({ error: 'Missing session token' }, 401);
+  if (!token) return jsonResponse({ error: 'Missing session token' }, 401, request);
 
   await env.DB.prepare(`DELETE FROM interactions WHERE session_id = ?`).bind(token).run();
-  return jsonResponse({ success: true, message: 'Logs cleared' });
+  return jsonResponse({ success: true, message: 'Logs cleared' }, 200, request);
 }
 
 export async function handleExternalDnsSync(request, env) {
@@ -196,7 +197,7 @@ export async function handleExternalDnsSync(request, env) {
   const expectedSecret = env.DNS_SYNC_SECRET || 'toast-default-secret';
 
   if (secretKey !== expectedSecret) {
-    return jsonResponse({ error: 'Unauthorized DNS Sync' }, 401);
+    return jsonResponse({ error: 'Unauthorized DNS Sync' }, 401, request);
   }
 
   try {
@@ -210,9 +211,9 @@ export async function handleExternalDnsSync(request, env) {
       VALUES (?, ?, 'dns', 'DNS-UDP', ?, ?, ?, ?)
     `).bind(sessionId, payload_id, method || 'A', source_ip || '0.0.0.0', raw_data || '', JSON.stringify(parsed_data || {})).run();
 
-    return jsonResponse({ success: true });
+    return jsonResponse({ success: true }, 200, request);
   } catch (err) {
-    return jsonResponse({ error: err.message }, 500);
+    return jsonResponse({ error: err.message }, 500, request);
   }
 }
 
