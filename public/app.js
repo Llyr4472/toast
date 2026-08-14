@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateSubdomainUI(sub, apiFormattedSub) {
     let fullSubdomain = apiFormattedSub;
-    if (!fullSubdomain) {
+    if (!fullSubdomain || !fullSubdomain.includes('.')) {
       const currentHost = window.location.host;
       fullSubdomain = `${sub}.${currentHost}`;
       
@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.success) {
         statusBadge.textContent = 'Live';
         statusBadge.className = 'badge badge-light';
-        if (data.full_subdomain && data.full_subdomain !== fullSubdomainApi) {
+        if (data.full_subdomain && data.full_subdomain.includes('.') && data.full_subdomain !== fullSubdomainApi) {
           fullSubdomainApi = data.full_subdomain;
           localStorage.setItem('toast_full_subdomain', fullSubdomainApi);
           updateSubdomainUI(payloadId, fullSubdomainApi);

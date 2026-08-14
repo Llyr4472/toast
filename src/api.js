@@ -30,15 +30,11 @@ export async function handleRegister(request, env) {
       `INSERT INTO sessions (token, subdomain, name, expires_at) VALUES (?, ?, ?, ?)`
     ).bind(token, payloadId, sessionName, expiresAt).run();
 
-    // Compute configured OAST & Dashboard domain strings from environment
-    const oastDomain = env.OAST_DOMAIN || env.BASE_DOMAIN || '';
-    const dashboardDomain = env.DASHBOARD_DOMAIN || env.BASE_DOMAIN || '';
-
-    let formattedSubdomain = payloadId;
-    if (oastDomain) {
-      const cleanOastDomain = oastDomain.replace(/^https?:\/\//, '').replace(/^\*\./, '');
-      formattedSubdomain = `${payloadId}.${cleanOastDomain}`;
-    }
+    // Compute full FQDN subdomain string for callbacks
+    const reqHost = request.headers.get('Host') || new URL(request.url).hostname;
+    const oastDomain = env.OAST_DOMAIN || env.BASE_DOMAIN || reqHost;
+    const cleanOastDomain = oastDomain.replace(/^https?:\/\//, '').replace(/^\*\./, '');
+    const formattedSubdomain = `${payloadId}.${cleanOastDomain}`;
 
     return jsonResponse({
       success: true,
@@ -46,8 +42,7 @@ export async function handleRegister(request, env) {
       payload_id: payloadId,
       subdomain: payloadId,
       full_subdomain: formattedSubdomain,
-      oast_domain: oastDomain,
-      dashboard_domain: dashboardDomain,
+      oast_domain: cleanOastDomain,
       expires_at: expiresAt
     }, 200, request);
   } catch (err) {
@@ -90,12 +85,10 @@ export async function handlePoll(request, env) {
       };
     });
 
-    const oastDomain = env.OAST_DOMAIN || env.BASE_DOMAIN || '';
-    let formattedSubdomain = session.subdomain;
-    if (oastDomain) {
-      const cleanOastDomain = oastDomain.replace(/^https?:\/\//, '').replace(/^\*\./, '');
-      formattedSubdomain = `${session.subdomain}.${cleanOastDomain}`;
-    }
+    const reqHost = request.headers.get('Host') || new URL(request.url).hostname;
+    const oastDomain = env.OAST_DOMAIN || env.BASE_DOMAIN || reqHost;
+    const cleanOastDomain = oastDomain.replace(/^https?:\/\//, '').replace(/^\*\./, '');
+    const formattedSubdomain = `${session.subdomain}.${cleanOastDomain}`;
 
     return jsonResponse({
       success: true,
